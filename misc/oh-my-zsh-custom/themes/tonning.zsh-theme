@@ -26,7 +26,13 @@
 # A few utility functions to make it easy and re-usable to draw segmented prompts
 
 CURRENT_BG='NONE'
-SEGMENT_SEPARATOR='⮀'
+SEGMENT_SEPARATOR=''
+
+## huh dont need this
+collapse_pwd() {
+   # echo $(pwd | sed -e "s,^$HOME,~,")
+   echo $(pwd | sed -e "s,^$HOME,~," | sed "s@\(.\)[^/]*/@\1/@g")
+}
 
 # Begin a segment
 # Takes two arguments, background and foreground. Both can be omitted,
@@ -38,9 +44,11 @@ prompt_segment() {
   if [[ $CURRENT_BG != 'NONE' && $1 != $CURRENT_BG ]]; then
     echo -n " %{$bg%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{$fg%} "
   else
-    echo -n "%{$bg%}%{$fg%} "
+    echo -n "%{$fg%} "
+    # echo $(pwd | sed -e "s,^$HOME,~," | sed "s@\(.\)[^/]*/@\1/@g")
+    # echo $(pwd | sed -e "s,^$HOME,~,")
   fi
-  CURRENT_BG=$1
+  CURRENT_BG='NONE'
   [[ -n $3 ]] && echo -n $3
 }
 
@@ -60,10 +68,8 @@ prompt_end() {
 
 # Context: user@hostname (who am I and where am I)
 prompt_context() {
-  local user=`whoami`
-
-  if [[ "$user" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
-    prompt_segment black default "%(!.%{%F{yellow}%}.)$user@%m"
+  if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
+    prompt_segment black default "%(!.%{%F{yellow}%}.)$USER@%m ≀"
   fi
 }
 
@@ -71,67 +77,22 @@ prompt_context() {
 prompt_git() {
   local ref dirty
   if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+    ZSH_THEME_GIT_PROMPT_DIRTY='±'
     dirty=$(parse_git_dirty)
     ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="➦ $(git show-ref --head -s --abbrev |head -n1 2> /dev/null)"
     if [[ -n $dirty ]]; then
-      prompt_segment yellow black
+      prompt_segment black yellow
     else
-      prompt_segment green black
+      prompt_segment black green
     fi
-
-    setopt promptsubst
-    autoload -Uz vcs_info
-
-    zstyle ':vcs_info:*' enable git
-    zstyle ':vcs_info:*' get-revision true
-    zstyle ':vcs_info:*' check-for-changes true
-    zstyle ':vcs_info:*' stagedstr '✚'
-    zstyle ':vcs_info:git:*' unstagedstr '●'
-    zstyle ':vcs_info:*' formats ' %u%c'
-    zstyle ':vcs_info:*' actionformats '%u%c'
-    vcs_info
-    echo -n "${ref/refs\/heads\//⭠ }${vcs_info_msg_0_}"
+    echo -n "${ref/refs\/heads\//@ }$dirty"
   fi
-}
-
-prompt_hg() {
-	local rev status
-	if $(hg id >/dev/null 2>&1); then
-		if $(hg prompt >/dev/null 2>&1); then
-			if [[ $(hg prompt "{status|unknown}") = "?" ]]; then
-				# if files are not added
-				prompt_segment red white
-				st='±'
-			elif [[ -n $(hg prompt "{status|modified}") ]]; then
-				# if any modification
-				prompt_segment yellow black
-				st='±'
-			else
-				# if working copy is clean
-				prompt_segment green black
-			fi
-			echo -n $(hg prompt "⭠ {rev}@{branch}") $st
-		else
-			st=""
-			rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
-			branch=$(hg id -b 2>/dev/null)
-			if `hg st | grep -Eq "^\?"`; then
-				prompt_segment red black
-				st='±'
-			elif `hg st | grep -Eq "^(M|A)"`; then
-				prompt_segment yellow black
-				st='±'
-			else
-				prompt_segment green black
-			fi
-			echo -n "⭠ $rev@$branch" $st
-		fi
-	fi
 }
 
 # Dir: current working directory
 prompt_dir() {
-  prompt_segment blue black '%~'
+  prompt_segment black blue '%~'
+  # echo $(pwd | sed -e "s,^$HOME,~," | sed "s@\(.\)[^/]*/@\1/@g")
 }
 
 # Status:
@@ -155,8 +116,8 @@ build_prompt() {
   prompt_context
   prompt_dir
   prompt_git
-  prompt_hg
   prompt_end
 }
 
-PROMPT='%{%f%b%k%}$(build_prompt) '
+PROMPT='%{%f%b%k%}$(build_prompt)%{$bg[red]%}%{$fg_bold[white]%}$(work_in_progress)%{$reset_color%}
+  $ '

@@ -41,7 +41,7 @@ function digga() {
 	dig +nocmd "$1" any +multiline +noall +answer
 }
 
-#shortcut voor zhs quick-look command
+#shortcut for zhs quick-look command
 function ql() {
    quick-look "$1"
 }
@@ -58,7 +58,7 @@ function weather() {
    city="$1"
 
    if [ -z "$city" ]; then
-      city="Antwerp"
+      city="New York"
    fi
 
    eval "curl http://wttr.in/${city}"
